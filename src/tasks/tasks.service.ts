@@ -2,20 +2,64 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { QueryTaskDto } from './dto/query-task.dto';
+import { Prisma } from '../generated/prisma/client';
 
 @Injectable()
 export class TasksService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(userId: number) {
-    return this.prisma.task.findMany({
-      where: {
-        userId,
+  async findAll(userId: number, query: QueryTaskDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.TaskWhereInput = {
+      userId,
+      ...(query.done !== undefined && { done: query.done }),
+      ...(query.search && {
+        OR: [
+          {
+            title: {
+              contains: query.search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            description: {
+              contains: query.search,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.task.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          id: 'asc',
+        },
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
       },
-      orderBy: {
-        id: 'asc',
-      },
-    });
+    };
   }
 
   async findOne(id: number, userId: number) {
