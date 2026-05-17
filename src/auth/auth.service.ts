@@ -5,22 +5,31 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { Role } from './role/role.enum';
+
+type TokenUser = {
+  id: number;
+  email: string;
+  name: string | null;
+  role: Role;
+};
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(registerDto: RegisterDto) {
-    const exsitingUser = await this.usersService.findByEmail(registerDto.email);
+    const existingUser = await this.usersService.findByEmail(registerDto.email);
 
-    if (exsitingUser) {
+    if (existingUser) {
       throw new ConflictException('User already exists');
     }
 
@@ -32,7 +41,7 @@ export class AuthService {
       name: registerDto.name,
     });
 
-    return this.generateTokenResponse({
+    return this.generateAuthResponse({
       id: user.id,
       email: user.email,
       name: user.name,
@@ -56,7 +65,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid password');
     }
 
-    return this.generateTokenResponse({
+    return this.generateAuthResponse({
       id: user.id,
       email: user.email,
       name: user.name,
@@ -64,23 +73,59 @@ export class AuthService {
     });
   }
 
-  private async generateTokenResponse(user: {
-    id: number;
-    email: string;
-    name: string | null;
-    role: Role;
-  }) {
+  async refreshToken(user: TokenUser) {
+    return this.generateAuthResponse(user);
+  }
+
+  async logout(userId: number) {
+    await this.usersService.removeHashedRefreshToken(userId);
+
+    return {
+      loggedOut: true,
+    };
+  }
+
+  async generateAuthResponse(user: TokenUser) {
+    const tokens = await this.generateTokens(user);
+
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+
+    await this.usersService.updateHashedRefreshToken(
+      user.id,
+      hashedRefreshToken,
+    );
+
+    return {
+      ...tokens,
+      tokenType: 'Bearer',
+      user,
+    };
+  }
+
+  private async generateTokens(user: TokenUser) {
     const payload = {
       sub: user.id,
       email: user.email,
     };
 
-    const accessToken = await this.jwtService.signAsync(payload);
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.getOrThrow<string>('JWT_SECRET') as any,
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') ?? '15m',
+      } as any),
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.getOrThrow<string>(
+          'REFRESH_TOKEN_SECRET',
+        ) as any,
+        expiresIn: (this.configService.get<string>(
+          'REFRESH_TOKEN_EXPIRES_IN',
+        ) ?? '7d') as any,
+      } as any),
+    ]);
 
     return {
       accessToken,
-      tokenType: 'Bearer',
-      user,
+      refreshToken,
     };
   }
 }

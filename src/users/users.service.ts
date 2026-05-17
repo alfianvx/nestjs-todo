@@ -28,4 +28,18 @@ export class UsersService {
       data: input,
     });
   }
+
+  async updateHashedRefreshToken(userId: number, hashedRefreshToken: string) {
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: { hashedRefreshToken },
+    });
+  }
+
+  async removeHashedRefreshToken(userId: number) {
+    return await this.prisma.user.update({
+      where: { id: userId },
+      data: { hashedRefreshToken: null },
+    });
+  }
 }
