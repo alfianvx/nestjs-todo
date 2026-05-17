@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AdminService {
+  logger = new Logger(AdminService.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  findAllUser() {
-    return this.prisma.user.findMany({
+  async findAllUser() {
+    const users = await this.prisma.user.findMany({
       select: {
         id: true,
         email: true,
@@ -20,10 +21,14 @@ export class AdminService {
         id: 'asc',
       },
     });
+
+    this.logger.log(`Found ${users.length} users`);
+
+    return users;
   }
 
-  findAllTasks() {
-    return this.prisma.task.findMany({
+  async findAllTasks() {
+    const tasks = await this.prisma.task.findMany({
       include: {
         user: {
           select: {
@@ -38,5 +43,9 @@ export class AdminService {
         id: 'asc',
       },
     });
+
+    this.logger.log(`Found ${tasks.length} tasks`);
+
+    return tasks;
   }
 }

@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -20,6 +21,7 @@ type TokenUser = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -30,6 +32,9 @@ export class AuthService {
     const existingUser = await this.usersService.findByEmail(registerDto.email);
 
     if (existingUser) {
+      this.logger.warn(`Register failed: user already exists`, {
+        email: registerDto.email,
+      });
       throw new ConflictException('User already exists');
     }
 
@@ -40,6 +45,8 @@ export class AuthService {
       password: hashedPassword,
       name: registerDto.name,
     });
+
+    this.logger.log(`User registered: userId${user.id} email=${user.email}`);
 
     return this.generateAuthResponse({
       id: user.id,
@@ -53,6 +60,9 @@ export class AuthService {
     const user = await this.usersService.findByEmail(loginDto.email);
 
     if (!user) {
+      this.logger.warn(`Login failed: user not found`, {
+        email: loginDto.email,
+      });
       throw new UnauthorizedException('Email or password invalid');
     }
 
@@ -62,8 +72,13 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
+      this.logger.warn(`Login failed: invalid password`, {
+        email: loginDto.email,
+      });
       throw new UnauthorizedException('Invalid password');
     }
+
+    this.logger.log(`User logged in: userId=${user.id} email=${user.email}`);
 
     return this.generateAuthResponse({
       id: user.id,
@@ -74,11 +89,14 @@ export class AuthService {
   }
 
   async refreshToken(user: TokenUser) {
+    this.logger.log(`Refreshing token: userId=${user.id} email=${user.email}`);
     return this.generateAuthResponse(user);
   }
 
   async logout(userId: number) {
     await this.usersService.removeHashedRefreshToken(userId);
+
+    this.logger.log(`User logged out: userId=${userId}`);
 
     return {
       loggedOut: true,
