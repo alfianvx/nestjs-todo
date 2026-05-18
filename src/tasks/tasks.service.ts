@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { QueryTaskDto } from './dto/query-task.dto';
 import { Prisma } from '../generated/prisma/client';
 
@@ -42,7 +42,7 @@ export class TasksService {
         skip,
         take: limit,
         orderBy: {
-          id: 'asc',
+          createdAt: 'desc',
         },
       }),
       this.prisma.task.count({ where }),
@@ -86,6 +86,7 @@ export class TasksService {
     const task = await this.prisma.task.create({
       data: {
         title: createTaskDto.title,
+        description: createTaskDto.description,
         done: createTaskDto.done ?? false,
         userId,
       },
@@ -133,6 +134,9 @@ export class TasksService {
       `Task deleted: id=${task_deleted.id} title=${task_deleted.title}`,
     );
 
-    return task_deleted;
+    return {
+      deleted: true,
+      task: task_deleted,
+    };
   }
 }

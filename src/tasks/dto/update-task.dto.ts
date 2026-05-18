@@ -9,6 +9,10 @@ export class UpdateTaskDto extends PartialType(CreateTaskDto) {
   title?: string;
 
   @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
   @IsBoolean()
   done?: boolean;
 }

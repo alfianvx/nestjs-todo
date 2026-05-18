@@ -35,7 +35,8 @@ export class AuthService {
       this.logger.warn(`Register failed: user already exists`, {
         email: registerDto.email,
       });
-      throw new ConflictException('User already exists');
+      // Return localized message expected by E2E tests
+      throw new ConflictException('Email sudah terdaftar');
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
@@ -63,7 +64,8 @@ export class AuthService {
       this.logger.warn(`Login failed: user not found`, {
         email: loginDto.email,
       });
-      throw new UnauthorizedException('Email or password invalid');
+      // Use a generic localized message so callers cannot distinguish user-not-found vs bad-password
+      throw new UnauthorizedException('Email atau password salah');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -75,7 +77,8 @@ export class AuthService {
       this.logger.warn(`Login failed: invalid password`, {
         email: loginDto.email,
       });
-      throw new UnauthorizedException('Invalid password');
+      // Use the same localized message for invalid password
+      throw new UnauthorizedException('Email atau password salah');
     }
 
     this.logger.log(`User logged in: userId=${user.id} email=${user.email}`);

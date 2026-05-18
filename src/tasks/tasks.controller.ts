@@ -6,7 +6,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
-  Put,
+  Patch,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -64,7 +64,7 @@ export class TasksController {
   @ApiParam({ name: 'id', example: 1, description: 'ID task' })
   @ApiResponse({ status: 200, description: 'Task berhasil diupdate' })
   @ApiResponse({ status: 404, description: 'Task tidak ditemukan' })
-  @Put(':id')
+  @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateTaskDto: UpdateTaskDto,

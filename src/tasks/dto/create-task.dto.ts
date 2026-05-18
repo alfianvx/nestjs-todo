@@ -12,8 +12,15 @@ export class CreateTaskDto {
   title: string;
 
   @ApiPropertyOptional({
+    example: 'learning by doing',
+    description: 'Deskripsi task',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({
     example: false,
-    description: 'Status selesai atau belum',
     default: false,
   })
   @IsOptional()
