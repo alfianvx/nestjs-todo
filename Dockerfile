@@ -14,6 +14,8 @@ COPY src ./src
 COPY nest-cli.json ./
 COPY tsconfig*.json ./
 
+ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/task_manager?schema=public"
+
 RUN npx prisma generate
 RUN npm run build
 
